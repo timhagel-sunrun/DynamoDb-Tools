@@ -1,0 +1,64 @@
+const fs = require('fs');
+const { DynamoDB } = require("@aws-sdk/client-dynamodb");
+const { parseCsvFile } = require('./helpers/csv-convert');
+const { writeBatch } = require('./helpers/dynamodb-batch')
+//import { DynamoDBDocumentClient} from '@aws-sdk/lib-dynamodb'
+
+const sleep = (timeoutMs) => {
+    return new Promise(resolve => {
+        setTimeout(() => { resolve(); }, timeoutMs)
+    });
+}
+
+const executeBulkInsert = async () => {
+    console.log('Executing bulk insert...');
+
+    const tableName = 'test-table'
+    const csvFile = './data/test-data.csv';
+    const keyField = 'id';
+    const keyFieldType = 'S';
+
+
+    // LOCAL CONFIG
+    /**
+     * @type { import('@aws-sdk/client-dynamodb').DynamoDBClientConfig}
+     */
+    const clientConfig = {
+        region: 'localhost',
+        endpoint: "http://localhost:8000",
+        credentials: {
+            accessKeyId: "2gf4f7d",
+            secretAccessKey: "vqtf6k",
+        }
+    };
+
+    // REMOTE CONFIG
+
+    /**
+     * @type { import('@aws-sdk/client-dynamodb').DynamoDBClientConfig}
+     */
+    // const clientConfig = {
+    //     region: 'localhost',
+    //     endpoint: "http://localhost:8000",
+    //     credentials: {
+    //         accessKeyId: "k76ai",
+    //         secretAccessKey: "lxde0a",
+    //     }
+    // };
+
+    const items = await parseCsvFile(csvFile);
+    // console.log(JSON.stringify(items));
+    const mappedItems = items.map(i => {
+        return {
+            "id": i.OpportunityId,
+            "lat": i.Latitude,
+            "lon": i.Longitude
+        }
+    })
+    await writeBatch(clientConfig, tableName, keyField, keyFieldType, mappedItems);
+
+
+
+}
+
+executeBulkInsert();
